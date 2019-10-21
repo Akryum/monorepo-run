@@ -1,0 +1,51 @@
+{
+  "name": "monorepo-run",
+  "version": "0.1.0",
+  "description": "Run scripts in monorepo with colors and streaming support",
+  "main": "src/index.js",
+  "bin": {
+    "mono-run": "src/bin/mono-run.js"
+  },
+  "scripts": {
+    "test": "yarn run lint",
+    "lint": "eslint .",
+    "prepublishOnly": "yarn run test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Akryum/monorepo-run.git"
+  },
+  "keywords": [
+    "monorepo",
+    "workspace",
+    "run",
+    "script"
+  ],
+  "author": "Guillaume Chau <guillaume.b.chau@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Akryum/monorepo-run/issues"
+  },
+  "homepage": "https://github.com/Akryum/monorepo-run#readme",
+  "engines": {
+    "node": ">=10"
+  },
+  "dependencies": {
+    "cac": "^6.5.3",
+    "chalk": "^2.4.2",
+    "consola": "^2.10.1",
+    "globby": "^10.0.1",
+    "node-pty": "^0.8.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.4.0",
+    "@babel/preset-env": "^7.4.2",
+    "babel-eslint": "^10.0.1",
+    "eslint": "^6.5.1",
+    "eslint-config-standard": "^12.0.0",
+    "eslint-plugin-import": "^2.8.0",
+    "eslint-plugin-node": "^10.0.0",
+    "eslint-plugin-promise": "^4.0.1",
+    "eslint-plugin-standard": "^4.0.0"
+  }
+}
