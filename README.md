@@ -14,3 +14,9 @@ yarn add -D monorepo-run
 Then use `mono-run <script>` to run a NPM script in your monorepo packages.
 
 By default it will understand Yarn workspaces.
+
+To display the command help, use:
+
+```
+mono-run --help
+```
