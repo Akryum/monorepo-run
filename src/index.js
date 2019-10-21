@@ -18,7 +18,9 @@ exports.monorepoRun = async (script, patterns, cwd, streaming = false) => {
   }
   if (!patterns.length) {
     consola.error(`'patterns' is empty.`)
-    return false
+    return {
+      folders: [],
+    }
   }
 
   const folders = resolveScriptFolders(script, patterns)
