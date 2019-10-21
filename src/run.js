@@ -2,7 +2,12 @@ const path = require('path')
 const pty = require('node-pty')
 const chalk = require('chalk')
 const consola = require('consola')
+const nodeCleanup = require('node-cleanup')
+const { terminate } = require('./util/terminate')
 
+/** @typedef {import('node-pty').IPty} IPty */
+
+/** @type {Set<IPty>} */
 const children = new Set()
 
 // Same colors as lerna 😺️
@@ -138,7 +143,13 @@ exports.runScript = (script, folder, streaming) => {
 
 exports.killAll = () => {
   for (const child of children) {
-    child.kill()
+    terminate(child, process.cwd())
+      .then(() => child.kill())
   }
   children.clear()
 }
+
+nodeCleanup(() => {
+  console.log('nodeCleanup')
+  exports.killAll()
+})

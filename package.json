@@ -35,6 +35,7 @@
     "chalk": "^2.4.2",
     "consola": "^2.10.1",
     "globby": "^10.0.1",
+    "node-cleanup": "^2.1.2",
     "node-pty": "^0.8.1"
   },
   "devDependencies": {
