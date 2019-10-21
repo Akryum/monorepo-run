@@ -13,6 +13,9 @@ function pickColor () {
   return colors[colorIndex++ % colors.length]
 }
 
+let lastOutputClearedLine = false
+let lastOutputFolder = null
+
 /**
  * @param {string} script
  * @param {string[]} folders
@@ -41,7 +44,8 @@ exports.runScripts = async (script, folders, streaming) => {
  */
 exports.runScript = (script, folder, streaming) => {
   const color = chalk[pickColor()]
-  const tag = color.bold(`[${path.basename(folder)}]:`)
+  const tag = color(`⎡⚑ ${path.basename(folder)}`)
+  const border = color('⎢')
 
   const child = pty.spawn('npm', [
     'run',
@@ -57,6 +61,46 @@ exports.runScript = (script, folder, streaming) => {
 
   let buffer = ''
   let time = Date.now()
+  let timeout = null
+
+  const print = (data) => {
+    if (!data.trim()) return
+    const clearingLine = data.includes('\r')
+    if (lastOutputClearedLine && (!clearingLine || lastOutputClearedLine !== folder)) {
+      process.stdout.write('\n')
+    }
+    if (lastOutputFolder !== folder) {
+      process.stdout.write(`\n${tag}${color(':')} `)
+      if (clearingLine) {
+        process.stdout.write('\n')
+      }
+    }
+    process.stdout.write(data)
+    lastOutputClearedLine = clearingLine ? folder : false
+    lastOutputFolder = folder
+  }
+
+  const processOutput = (data) => {
+    return data.replace(/(\n|\r)/g, `$1${border}`)
+  }
+
+  const queue = (data) => {
+    if (!data.trim()) return
+    buffer += data
+    const now = Date.now()
+    if (now - time >= streaming) {
+      flush()
+    } else if (!timeout) {
+      timeout = setTimeout(flush, streaming)
+    }
+  }
+
+  const flush = () => {
+    print(processOutput(buffer))
+    buffer = ''
+    time = Date.now()
+    timeout = null
+  }
 
   const promise = new Promise((resolve, reject) => {
     child.on('data', (data) => {
@@ -64,15 +108,9 @@ exports.runScript = (script, folder, streaming) => {
         if (typeof streaming === 'function') {
           streaming(data, folder, script)
         } else if (typeof streaming === 'number') {
-          buffer += data
-          const now = Date.now()
-          if (now - time >= streaming) {
-            process.stdout.write(`${tag} ${buffer}\n`)
-            buffer = ''
-            time = now
-          }
+          queue(data)
         } else {
-          process.stdout.write(`${tag} ${data}\n`)
+          print(processOutput(data))
         }
       } else {
         buffer += data
@@ -81,7 +119,7 @@ exports.runScript = (script, folder, streaming) => {
 
     child.on('exit', (code) => {
       if (!streaming && buffer) {
-        process.stdout.write(`${tag}\n${buffer}`)
+        process.stdout.write(`${tag}\n${border}${processOutput(buffer)}`)
       }
       if (code !== 0) {
         reject(new Error(`${tag} Process exited with code ${code} for script ${script} in ${folder}.`))
