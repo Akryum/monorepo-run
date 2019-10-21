@@ -22,6 +22,13 @@ cli.command('<script>', 'Run a script in the monorepo packages')
     if (options.stream && !isNaN(parseInt(options.stream))) {
       options.stream = parseInt(options.stream)
     }
+    if (options.patterns) {
+      if (options.patterns.startsWith('[')) {
+        options.patterns = JSON.parse(options.patterns)
+      } else {
+        options.patterns = options.patterns.split(',')
+      }
+    }
     try {
       const time = Date.now()
       const { folders } = await monorepoRun(script, options.patterns, null, options.stream)
