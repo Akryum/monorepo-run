@@ -3,6 +3,7 @@ const pty = require('node-pty')
 const chalk = require('chalk')
 const consola = require('consola')
 const nodeCleanup = require('node-cleanup')
+const { terminate } = require('./util/terminate')
 
 /** @typedef {import('node-pty').IPty} IPty */
 
@@ -142,7 +143,8 @@ exports.runScript = (script, folder, streaming) => {
 
 exports.killAll = () => {
   for (const child of children) {
-    child.kill()
+    terminate(child, process.cwd())
+      .then(() => child.kill())
   }
   children.clear()
 }
