@@ -7,13 +7,13 @@ Run scripts in monorepo with colors and streaming support
 
 ## Installation
 
-```
+```bash
 yarn global add monorepo-run
 ```
 
 Or locally in your project:
 
-```
+```bash
 yarn add -D monorepo-run
 ```
 
@@ -25,8 +25,23 @@ By default it will understand Yarn workspaces.
 
 To display the command help, use:
 
-```
+```bash
 mono-run --help
+```
+
+### Streaming
+
+By default, `mono-run` will wait for scripts to complete before displaying the outputs. If you want to get the ouput as soon as it's written instead, spceify the `--stream` flag:
+
+```bash
+mono-run dev --stream
+```
+
+You can throttle the output so it's less overwelming in case there are a lot of writes:
+
+```bash
+# Throttle every 500ms
+mono-run dev --stream 500
 ```
 
 ## Examples
