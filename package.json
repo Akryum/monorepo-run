@@ -1,7 +1,7 @@
 {
   "name": "monorepo-run",
   "version": "0.1.3",
-  "description": "Run scripts in monorepo with colors and streaming support",
+  "description": "Run scripts in monorepo with colors, streaming and separated panes",
   "main": "src/index.js",
   "bin": {
     "mono-run": "src/bin/mono-run.js"
@@ -19,7 +19,8 @@
     "monorepo",
     "workspace",
     "run",
-    "script"
+    "script",
+    "clui"
   ],
   "author": "Guillaume Chau <guillaume.b.chau@gmail.com>",
   "license": "MIT",

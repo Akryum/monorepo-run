@@ -1,5 +1,5 @@
 # monorepo-run
-Run scripts in monorepo with colors and streaming support
+Run scripts in monorepo with colors, streaming and separated panes
 
 <p align="center">
   <img src="./mono-run.png" alt="Mono run screenshot">
@@ -28,6 +28,18 @@ To display the command help, use:
 ```bash
 mono-run --help
 ```
+
+### UI
+
+Enable UI layouts with the `--ui` flag:
+
+```bash
+mono-run lint --ui column
+```
+
+<p align="center">
+  <img src="./mono-run-ui.png" alt="Mono run UI screenshot">
+</p>
 
 ### Streaming
 
