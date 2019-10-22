@@ -121,7 +121,7 @@ exports.startUI = (script, folders, streaming, layout) => {
     } = createToolbar(screen, items)
 
     for (const item of items) {
-      item.child.resize(item.log.width, item.log.height)
+      item.child.resize(item.log.width - 2, item.log.height)
     }
 
     const update = () => {
