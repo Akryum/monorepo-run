@@ -32,6 +32,7 @@
     "node": ">=10"
   },
   "dependencies": {
+    "ansi-escapes": "^4.2.1",
     "blessed": "^0.1.81",
     "cac": "^6.5.3",
     "chalk": "^2.4.2",

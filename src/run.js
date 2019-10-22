@@ -2,6 +2,7 @@ const path = require('path')
 const pty = require('node-pty')
 const chalk = require('chalk')
 const consola = require('consola')
+const ansiEscapes = require('ansi-escapes')
 const { terminate } = require('./util/terminate')
 const { hasYarn } = require('./util/env')
 
@@ -26,6 +27,10 @@ function pickColor () {
 
 let lastOutputClearedLine = false
 let lastOutputFolder = null
+
+function escapeAnsiEscapeSeq (s) {
+  return s.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')
+}
 
 /**
  * @param {string} script
@@ -68,7 +73,7 @@ exports.runScript = (script, folder, streaming, quiet = false, colorCode = null)
     script,
   ], {
     name: 'xterm-color',
-    cols: process.stdout.columns,
+    cols: process.stdout.columns - 2,
     rows: process.stdout.rows,
     cwd: folder,
     env: process.env,
@@ -80,14 +85,27 @@ exports.runScript = (script, folder, streaming, quiet = false, colorCode = null)
   let time = Date.now()
   let timeout = null
 
+  const printTag = `\n\n${tag}\n${border}${ansiEscapes.cursorTo(2)}`
+
+  const hasClearLineRef = new RegExp([
+    `\r`,
+    escapeAnsiEscapeSeq(ansiEscapes.eraseLine),
+    escapeAnsiEscapeSeq(ansiEscapes.cursorLeft),
+    escapeAnsiEscapeSeq(ansiEscapes.cursorTo(0)),
+    escapeAnsiEscapeSeq(ansiEscapes.cursorTo(1)),
+  ].join('|'))
+
   const print = (data) => {
     if (quiet || !data.trim()) return
-    const clearingLine = data.includes('\r')
-    if (lastOutputClearedLine && (!clearingLine || lastOutputClearedLine !== folder)) {
-      process.stdout.write('\n')
-    }
+    const clearingLine = hasClearLineRef.test(data)
+    data = processOutput(data)
     if (lastOutputFolder !== folder) {
-      process.stdout.write(`\n${tag}${color(':')} `)
+      if (lastOutputClearedLine) {
+        process.stdout.write(ansiEscapes.eraseLine)
+        process.stdout.write(ansiEscapes.cursorTo(0))
+      }
+      // Different folder => print folder tag
+      process.stdout.write(printTag)
       if (clearingLine) {
         process.stdout.write('\n')
       }
@@ -98,8 +116,28 @@ exports.runScript = (script, folder, streaming, quiet = false, colorCode = null)
     lastOutputFolder = folder
   }
 
+  // Process text to print border and move all output 2 charaters to the right
+
+  const regEraseLine = new RegExp(escapeAnsiEscapeSeq(ansiEscapes.eraseLine), 'g')
+  const regMoveCursor = new RegExp(`(${[
+    '\r',
+    escapeAnsiEscapeSeq(ansiEscapes.cursorLeft),
+    escapeAnsiEscapeSeq(ansiEscapes.cursorTo(0)),
+    escapeAnsiEscapeSeq(ansiEscapes.cursorTo(1)),
+  ].join('|')})+`, 'g')
+  const regNewLine = /(\n)/g
+  const fakePrintBorder = '__print_border__'
+  const fakePrintBorderReg = new RegExp(fakePrintBorder, 'g')
+  const printBorder = `${ansiEscapes.cursorTo(0)}${border}${ansiEscapes.cursorTo(2)}`
+  const printEraseLine = `${ansiEscapes.eraseLine}${fakePrintBorder}`
+  const printReplaceNewLine = `$&${fakePrintBorder}`
+
   const processOutput = (data) => {
-    return data.replace(/(\n|\r)/g, `$1${border}`)
+    data = data.replace(regEraseLine, printEraseLine)
+    data = data.replace(regMoveCursor, fakePrintBorder)
+    data = data.replace(regNewLine, printReplaceNewLine)
+    data = data.replace(fakePrintBorderReg, printBorder)
+    return data
   }
 
   const queue = (data) => {
@@ -114,7 +152,7 @@ exports.runScript = (script, folder, streaming, quiet = false, colorCode = null)
   }
 
   const flush = () => {
-    print(processOutput(buffer))
+    print(buffer)
     buffer = ''
     time = Date.now()
     timeout = null
@@ -128,7 +166,7 @@ exports.runScript = (script, folder, streaming, quiet = false, colorCode = null)
         } else if (typeof streaming === 'number') {
           queue(data)
         } else {
-          print(processOutput(data))
+          print(data)
         }
       } else {
         buffer += data
@@ -140,7 +178,7 @@ exports.runScript = (script, folder, streaming, quiet = false, colorCode = null)
         if (typeof streaming === 'function') {
           streaming(buffer, folder, script)
         } else {
-          print(processOutput(buffer))
+          print(buffer)
         }
       }
       if (code !== 0) {
