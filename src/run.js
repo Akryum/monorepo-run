@@ -9,6 +9,10 @@ const { terminate } = require('./util/terminate')
 /** @type {Set<IPty>} */
 const children = new Set()
 
+/** @type {Map<string, IPty>} */
+const folderMap = new Map()
+exports.folderMap = folderMap
+
 // Same colors as lerna 😺️
 const colors = ['cyan', 'magenta', 'blue', 'yellow', 'green', 'red']
 let colorIndex = 0
@@ -62,6 +66,7 @@ exports.runScript = (script, folder, streaming) => {
     env: process.env,
   })
   children.add(child)
+  folderMap.set(folder, child)
 
   let buffer = ''
   let time = Date.now()
@@ -131,6 +136,7 @@ exports.runScript = (script, folder, streaming) => {
         resolve()
       }
       children.delete(child)
+      folderMap.delete(folder)
     })
   })
 
@@ -146,4 +152,5 @@ exports.killAll = () => {
       .then(() => child.kill())
   }
   children.clear()
+  folderMap.clear()
 }
