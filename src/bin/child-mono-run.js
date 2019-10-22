@@ -39,8 +39,12 @@ cli.command('<script>', 'Run a script in the monorepo packages')
     try {
       const time = Date.now()
       const { folders } = await monorepoRun(script, options.patterns, null, options.stream, options.ui)
-      consola.success(`Completed ${script} (${Math.round((Date.now() - time) / 10) / 100}s) in:`)
-      consola.log(chalk.green(folders.join('\n')))
+
+      // Summary
+      console.log('\n')
+      consola.success(`Completed ${chalk.bold(script)} (${Math.round((Date.now() - time) / 10) / 100}s) in:`)
+      consola.log(chalk.green(folders.map(f => `  - ${f}`).join('\n')))
+
       process.exit()
     } catch (e) {
       consola.error(e)
