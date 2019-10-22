@@ -182,7 +182,7 @@ exports.runScript = (script, folder, streaming, quiet = false, colorCode = null)
         }
       }
       if (code !== 0) {
-        reject(new Error(`${tag} Process exited with code ${code} for script ${script} in ${folder}.`))
+        reject(new Error(`${color(path.basename(folder))} Process exited with code ${code} for script ${chalk.bold(script)} in ${folder}.`))
       } else {
         resolve()
       }
