@@ -1,6 +1,6 @@
 {
   "name": "monorepo-run",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "Run scripts in monorepo with colors, streaming and separated panes",
   "main": "src/index.js",
   "bin": {
