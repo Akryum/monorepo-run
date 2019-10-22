@@ -61,6 +61,7 @@ exports.startUI = (script, folders, streaming, layout) => {
     const screen = blessed.screen({
       smartCSR: true,
       autoPadding: true,
+      fullUnicode: true,
     })
 
     process.on('SIGWINCH', () => {
