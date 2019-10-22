@@ -123,7 +123,7 @@ exports.runScript = (script, folder, streaming) => {
     })
 
     child.on('exit', (code) => {
-      if (!streaming && buffer) {
+      if ((!streaming || code !== 0) && buffer) {
         process.stdout.write(`${tag}\n${border}${processOutput(buffer)}`)
       }
       if (code !== 0) {
@@ -150,6 +150,5 @@ exports.killAll = () => {
 }
 
 nodeCleanup(() => {
-  console.log('nodeCleanup')
   exports.killAll()
 })
