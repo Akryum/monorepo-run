@@ -6,6 +6,8 @@ const { terminate } = require('./util/terminate')
 
 /** @typedef {import('node-pty').IPty} IPty */
 
+/** @typedef {(data: string, folder: string, script: string) => void} StreamingCallback */
+
 /** @type {Set<IPty>} */
 const children = new Set()
 
@@ -27,7 +29,7 @@ let lastOutputFolder = null
 /**
  * @param {string} script
  * @param {string[]} folders
- * @param {boolean|number|function} streaming
+ * @param {boolean|number|StreamingCallback} streaming
  */
 exports.runScripts = async (script, folders, streaming) => {
   const promises = []
@@ -48,10 +50,15 @@ exports.runScripts = async (script, folders, streaming) => {
 /**
  * @param {string} script
  * @param {string} folder
- * @param {boolean|number|function} streaming
+ * @param {boolean|number|StreamingCallback} streaming
+ * @param {boolean} quiet
+ * @param {string} colorCode
  */
-exports.runScript = (script, folder, streaming) => {
-  const color = chalk[pickColor()]
+exports.runScript = (script, folder, streaming, quiet = false, colorCode = null) => {
+  if (!colorCode) {
+    colorCode = pickColor()
+  }
+  const color = chalk[colorCode]
   const tag = color(`⎡⚑ ${path.basename(folder)}`)
   const border = color('⎢')
 
@@ -73,7 +80,7 @@ exports.runScript = (script, folder, streaming) => {
   let timeout = null
 
   const print = (data) => {
-    if (!data.trim()) return
+    if (quiet || !data.trim()) return
     const clearingLine = data.includes('\r')
     if (lastOutputClearedLine && (!clearingLine || lastOutputClearedLine !== folder)) {
       process.stdout.write('\n')
@@ -127,8 +134,12 @@ exports.runScript = (script, folder, streaming) => {
     })
 
     child.on('exit', (code) => {
-      if ((!streaming || code !== 0) && buffer) {
-        process.stdout.write(`${tag}\n${border}${processOutput(buffer)}`)
+      if (buffer) {
+        if (typeof streaming === 'function') {
+          streaming(buffer, folder, script)
+        } else {
+          process.stdout.write(`${tag}\n${border}${processOutput(buffer)}`)
+        }
       }
       if (code !== 0) {
         reject(new Error(`${tag} Process exited with code ${code} for script ${script} in ${folder}.`))
@@ -143,13 +154,15 @@ exports.runScript = (script, folder, streaming) => {
   return {
     child,
     promise,
+    colorCode,
+    color,
   }
 }
 
 exports.killAll = () => {
   for (const child of children) {
     terminate(child, process.cwd())
-      .then(() => child.kill())
+    child.kill()
   }
   children.clear()
   folderMap.clear()

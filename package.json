@@ -31,6 +31,7 @@
     "node": ">=10"
   },
   "dependencies": {
+    "blessed": "^0.1.81",
     "cac": "^6.5.3",
     "chalk": "^2.4.2",
     "consola": "^2.10.1",

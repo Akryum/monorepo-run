@@ -14,6 +14,10 @@ cli.option('--stream [throttle]', 'Stream output directly instead of waiting for
   default: false,
 })
 
+cli.option('--ui [layout]', 'Display a grid UI with interactive actions. Layout can be: row, column', {
+  default: false,
+})
+
 cli.help()
 cli.version(pkg.version)
 
@@ -29,9 +33,12 @@ cli.command('<script>', 'Run a script in the monorepo packages')
         options.patterns = options.patterns.split(',')
       }
     }
+    if (options.ui && typeof options.ui !== 'string') {
+      options.ui = 'row'
+    }
     try {
       const time = Date.now()
-      const { folders } = await monorepoRun(script, options.patterns, null, options.stream)
+      const { folders } = await monorepoRun(script, options.patterns, null, options.stream, options.ui)
       consola.success(`Completed ${script} (${Math.round((Date.now() - time) / 10) / 100}s) in:`)
       consola.log(chalk.green(folders.join('\n')))
       process.exit()
