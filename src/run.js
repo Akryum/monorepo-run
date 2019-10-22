@@ -67,8 +67,8 @@ exports.runScript = (script, folder, streaming, quiet = false, colorCode = null)
     script,
   ], {
     name: 'xterm-color',
-    cols: 80,
-    rows: 30,
+    cols: process.stdout.columns,
+    rows: process.stdout.rows,
     cwd: folder,
     env: process.env,
   })

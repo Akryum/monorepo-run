@@ -114,6 +114,10 @@ exports.startUI = (script, folders, streaming, layout) => {
       refresh: refreshToolbar,
     } = createToolbar(screen, items)
 
+    for (const item of items) {
+      item.child.resize(item.log.width, item.log.height)
+    }
+
     const update = () => {
       const selectedItem = items[selectedIndex]
 
