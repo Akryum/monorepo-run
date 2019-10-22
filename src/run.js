@@ -92,6 +92,7 @@ exports.runScript = (script, folder, streaming, quiet = false, colorCode = null)
         process.stdout.write('\n')
       }
     }
+
     process.stdout.write(data)
     lastOutputClearedLine = clearingLine ? folder : false
     lastOutputFolder = folder
@@ -139,7 +140,7 @@ exports.runScript = (script, folder, streaming, quiet = false, colorCode = null)
         if (typeof streaming === 'function') {
           streaming(buffer, folder, script)
         } else {
-          process.stdout.write(`${tag}\n${border}${processOutput(buffer)}`)
+          print(processOutput(buffer))
         }
       }
       if (code !== 0) {
