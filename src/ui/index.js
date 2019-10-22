@@ -1,9 +1,9 @@
-const { runScript, killAll } = require('../run')
 const blessed = require('blessed')
-const { terminate } = require('../util/terminate')
-const { create: createToolbar } = require('./toobar')
 const path = require('path')
 const chalk = require('chalk')
+const { runScript, killAll } = require('../run')
+const { create: createToolbar } = require('./toobar')
+const { terminate } = require('../util/terminate')
 
 /**
  * @param {string} script

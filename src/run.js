@@ -5,6 +5,7 @@ const consola = require('consola')
 const ansiEscapes = require('ansi-escapes')
 const { terminate } = require('./util/terminate')
 const { hasYarn } = require('./util/env')
+const { escapeAnsiEscapeSeq } = require('./util/ansi')
 
 /** @typedef {import('node-pty').IPty} IPty */
 
@@ -27,10 +28,6 @@ function pickColor () {
 
 let lastOutputClearedLine = false
 let lastOutputFolder = null
-
-function escapeAnsiEscapeSeq (s) {
-  return s.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')
-}
 
 /**
  * @param {string} script
