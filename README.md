@@ -34,7 +34,7 @@ mono-run --help
 Enable UI layouts with the `--ui` flag:
 
 ```bash
-mono-run lint --ui column
+mono-run lint --ui row
 ```
 
 <p align="center">
