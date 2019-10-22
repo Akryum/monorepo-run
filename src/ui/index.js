@@ -21,6 +21,11 @@ exports.startUI = (script, folders, streaming, layout) => {
         update()
       }, true))
 
+      item.promise.catch(e => {
+        item.status = 'error'
+        update()
+      })
+
       item.child.on('exit', (code) => {
         if (item.status === 'killed') return
         if (code === 0) {
