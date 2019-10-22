@@ -4,6 +4,7 @@ const chalk = require('chalk')
 const { runScript, killAll } = require('../run')
 const { create: createToolbar } = require('./toobar')
 const { terminate } = require('../util/terminate')
+const { stripAnsiEscapeSeqs, hasEraseLineEscapeSeq } = require('../util/ansi')
 
 /**
  * @param {string} script
@@ -17,7 +18,12 @@ exports.startUI = (script, folders, streaming, layout) => {
 
     function applyProcess (item) {
       Object.assign(item, runScript(script, item.folder, (data) => {
-        item.log.add(data)
+        const text = stripAnsiEscapeSeqs(data)
+        if (!text.trim()) return
+        if (hasEraseLineEscapeSeq(data)) {
+          item.log.deleteBottom()
+        }
+        item.log.add(text)
         update()
       }, true))
 
