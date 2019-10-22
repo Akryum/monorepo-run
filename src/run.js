@@ -3,6 +3,7 @@ const pty = require('node-pty')
 const chalk = require('chalk')
 const consola = require('consola')
 const { terminate } = require('./util/terminate')
+const { hasYarn } = require('./util/env')
 
 /** @typedef {import('node-pty').IPty} IPty */
 
@@ -62,7 +63,7 @@ exports.runScript = (script, folder, streaming, quiet = false, colorCode = null)
   const tag = color(`⎡⚑ ${path.basename(folder)}`)
   const border = color('⎢')
 
-  const child = pty.spawn('npm', [
+  const child = pty.spawn(hasYarn() ? 'yarn' : 'npm', [
     'run',
     script,
   ], {
