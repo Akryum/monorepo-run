@@ -1,6 +1,7 @@
 const blessed = require('neo-blessed')
 const path = require('path')
 const chalk = require('chalk')
+const consola = require('consola')
 const { runScript, killAll } = require('../run')
 const { create: createToolbar } = require('./toobar')
 const { terminate } = require('../util/terminate')
@@ -14,6 +15,9 @@ const { stripAnsiEscapeSeqs, hasEraseLineEscapeSeq } = require('../util/ansi')
  */
 exports.startUI = (script, folders, streaming, layout) => {
   return new Promise((resolve) => {
+    // @TODO refactor help
+    consola.info('Keyboard shortcuts: Arrows to select task | [SPACE] to kill task or start again')
+
     // Items
 
     function applyProcess (item) {
