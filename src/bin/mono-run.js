@@ -1,44 +1,16 @@
 #!/usr/bin/env node
 
-const { cac } = require('cac')
-const { monorepoRun } = require('../')
-const consola = require('consola')
-const chalk = require('chalk')
-const pkg = require('../../package.json')
+const cp = require('child_process')
+const path = require('path')
+const nodeCleanup = require('node-cleanup')
+const { terminate } = require('../util/terminate')
 
-const cli = cac()
-
-cli.option('--patterns <patterns>', 'Folder glob patterns (by default will take yarn workspaces)')
-
-cli.option('--stream [throttle]', 'Stream output directly instead of waiting for the end. You can also throttle (ms) the output when streaming is enabled.', {
-  default: false,
+const child = cp.spawn(path.join(__dirname, 'child-mono-run.js'), process.argv.slice(2), {
+  stdio: 'inherit',
+  cwd: process.cwd(),
+  detached: true,
 })
 
-cli.help()
-cli.version(pkg.version)
-
-cli.command('<script>', 'Run a script in the monorepo packages')
-  .action(async (script, options) => {
-    if (options.stream && !isNaN(parseInt(options.stream))) {
-      options.stream = parseInt(options.stream)
-    }
-    if (options.patterns) {
-      if (options.patterns.startsWith('[')) {
-        options.patterns = JSON.parse(options.patterns)
-      } else {
-        options.patterns = options.patterns.split(',')
-      }
-    }
-    try {
-      const time = Date.now()
-      const { folders } = await monorepoRun(script, options.patterns, null, options.stream)
-      consola.success(`Completed ${script} (${Math.round((Date.now() - time) / 10) / 100}s) in:`)
-      consola.log(chalk.green(folders.join('\n')))
-      process.exit()
-    } catch (e) {
-      consola.error(e)
-      process.exit(1)
-    }
-  })
-
-cli.parse()
+nodeCleanup(() => {
+  terminate(child, process.cwd())
+})
