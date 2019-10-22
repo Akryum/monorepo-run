@@ -1,4 +1,4 @@
-const blessed = require('blessed')
+const blessed = require('neo-blessed')
 const path = require('path')
 const chalk = require('chalk')
 const { runScript, killAll } = require('../run')

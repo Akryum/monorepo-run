@@ -1,4 +1,4 @@
-const blessed = require('blessed')
+const blessed = require('neo-blessed')
 
 exports.create = (screen, items) => {
   const colSize = 1 / items.length * 100
