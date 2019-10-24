@@ -8,9 +8,10 @@ const { runScripts } = require('./run')
  * @param {string[]} patterns
  * @param {string} cwd
  * @param {boolean} streaming
+ * @param {number} throttle
  * @param {string} ui
  */
-exports.monorepoRun = async (script, patterns, cwd, streaming = false, ui = null) => {
+exports.monorepoRun = async (script, patterns, cwd, streaming = false, throttle = 0, ui = null) => {
   if (!cwd) {
     cwd = process.cwd()
   }
@@ -30,7 +31,7 @@ exports.monorepoRun = async (script, patterns, cwd, streaming = false, ui = null
     const { startUI } = require('./ui')
     await startUI(script, folders, streaming, ui)
   } else {
-    await runScripts(script, folders, streaming)
+    await runScripts(script, folders, streaming, throttle)
   }
 
   return {

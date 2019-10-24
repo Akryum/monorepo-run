@@ -5,7 +5,8 @@ const consola = require('consola')
 const { runScript, killAll } = require('../run')
 const { create: createToolbar } = require('./toobar')
 const { terminate } = require('../util/terminate')
-const { stripAnsiEscapeSeqs, hasEraseLineEscapeSeq } = require('../util/ansi')
+const { stripAnsiEscapeSeqs, countEraseLineEscapeSeqs } = require('../util/ansi')
+const { throttle } = require('../util/throttle')
 
 /**
  * @param {string} script
@@ -21,15 +22,21 @@ exports.startUI = (script, folders, streaming, layout) => {
     // Items
 
     function applyProcess (item) {
-      Object.assign(item, runScript(script, item.folder, (data) => {
-        const text = stripAnsiEscapeSeqs(data)
-        if (!text.trim()) return
-        if (hasEraseLineEscapeSeq(data)) {
-          item.log.deleteBottom()
+      let eraseLineEscapeSeqsCount = 0
+
+      const streamingCallback = (data) => {
+        eraseLineEscapeSeqsCount = countEraseLineEscapeSeqs(data)
+        if (eraseLineEscapeSeqsCount) {
+          for (let i = 0; i < eraseLineEscapeSeqsCount; i++) {
+            item.log.popLine()
+          }
         }
-        item.log.add(text)
+        data = stripAnsiEscapeSeqs(data)
+        item.log.add(data)
         update()
-      }, true))
+      }
+
+      Object.assign(item, runScript(script, item.folder, streamingCallback, 200, true))
 
       item.promise.catch(e => {
         item.status = 'error'
@@ -51,6 +58,13 @@ exports.startUI = (script, folders, streaming, layout) => {
       const item = {
         folder,
         status: 'running',
+        child: null,
+        promise: null,
+        colorCode: null,
+        color: null,
+        __label: null,
+        __status: null,
+        __selected: null,
       }
       applyProcess(item)
       item.label = item.color(path.basename(item.folder))
@@ -123,44 +137,39 @@ exports.startUI = (script, folders, streaming, layout) => {
     })
 
     const { create } = require(`./layouts/${layout}`)
-    const {
-      refresh: refreshLayout,
-    } = create(screen, items)
-    const {
-      refresh: refreshToolbar,
-    } = createToolbar(screen, items)
+    create(screen, items)
+    createToolbar(screen, items)
 
     for (const item of items) {
       item.child.resize(item.log.width - 2, item.log.height)
     }
 
-    const update = () => {
+    const update = throttle(() => {
       const selectedItem = items[selectedIndex]
 
       for (const item of items) {
-        item.log.setLabel(
-          item.color(item === selectedItem ? ' ◉ ' : ' ○ ') +
-          item.label + ' ' +
-          (item.status === 'running' ? '⏳'
-            : item.status === 'completed' ? chalk.green('✓')
-              : item.status === 'error' ? chalk.red('⚠')
-                : item.status === 'killed' ? chalk.gray('⊗')
-                  : '') + ' '
-        )
+        const selected = item === selectedItem
+        if (item.__label !== item.label ||
+          item.__status !== item.status ||
+          item.__selected !== selected) {
+          item.__label = item.label
+          item.__status = item.status
+          item.__selected = selected
+
+          item.log.setLabel(
+            item.color(selected ? ' ◉ ' : ' ○ ') +
+            item.label + ' ' +
+            (item.status === 'running' ? '⏳'
+              : item.status === 'completed' ? chalk.green('✓')
+                : item.status === 'error' ? chalk.red('⚠')
+                  : item.status === 'killed' ? chalk.gray('⊗')
+                    : '') + ' '
+          )
+        }
       }
 
-      refreshLayout({
-        items,
-        selectedItem,
-      })
-
-      refreshToolbar({
-        items,
-        selectedItem,
-      })
-
       screen.render()
-    }
+    }, 30)
 
     update()
   })

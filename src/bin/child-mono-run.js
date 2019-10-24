@@ -23,8 +23,10 @@ cli.version(pkg.version)
 
 cli.command('<script>', 'Run a script in the monorepo packages')
   .action(async (script, options) => {
+    let throttle
     if (options.stream && !isNaN(parseInt(options.stream))) {
-      options.stream = parseInt(options.stream)
+      throttle = parseInt(options.stream)
+      options.stream = true
     }
     if (options.patterns) {
       if (options.patterns.startsWith('[')) {
@@ -38,7 +40,7 @@ cli.command('<script>', 'Run a script in the monorepo packages')
     }
     try {
       const time = Date.now()
-      const { folders } = await monorepoRun(script, options.patterns, null, options.stream, options.ui)
+      const { folders } = await monorepoRun(script, options.patterns, null, options.stream, throttle, options.ui)
 
       // Summary
       console.log('\n')

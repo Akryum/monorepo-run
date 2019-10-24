@@ -5,7 +5,8 @@ const consola = require('consola')
 const ansiEscapes = require('ansi-escapes')
 const { terminate } = require('./util/terminate')
 const { hasYarn } = require('./util/env')
-const { escapeAnsiEscapeSeq } = require('./util/ansi')
+const { escapeAnsiEscapeSeq, countEraseLineEscapeSeqs } = require('./util/ansi')
+const { throttle: applyThrottle } = require('./util/throttle')
 
 /** @typedef {import('node-pty').IPty} IPty */
 
@@ -32,13 +33,14 @@ let lastOutputFolder = null
 /**
  * @param {string} script
  * @param {string[]} folders
- * @param {boolean|number|StreamingCallback} streaming
+ * @param {boolean|StreamingCallback} streaming
+ * @param {throttle} throttle
  */
-exports.runScripts = async (script, folders, streaming) => {
+exports.runScripts = async (script, folders, streaming = false, throttle = 0) => {
   const promises = []
 
   for (const folder of folders) {
-    const { promise } = exports.runScript(script, folder, streaming)
+    const { promise } = exports.runScript(script, folder, streaming, throttle)
     promises.push(promise)
     promise.catch(e => {
       consola.error(e)
@@ -53,11 +55,14 @@ exports.runScripts = async (script, folders, streaming) => {
 /**
  * @param {string} script
  * @param {string} folder
- * @param {boolean|number|StreamingCallback} streaming
+ * @param {boolean|StreamingCallback} streaming
+ * @param {throttle} throttle
  * @param {boolean} quiet
  * @param {string} colorCode
  */
-exports.runScript = (script, folder, streaming, quiet = false, colorCode = null) => {
+exports.runScript = (script, folder, streaming = false, throttle = 0, quiet = false, colorCode = null) => {
+  const streamingEnabled = !!streaming
+
   if (!colorCode) {
     colorCode = pickColor()
   }
@@ -78,10 +83,6 @@ exports.runScript = (script, folder, streaming, quiet = false, colorCode = null)
   children.add(child)
   folderMap.set(folder, child)
 
-  let buffer = ''
-  let time = Date.now()
-  let timeout = null
-
   const printTag = `\n\n${tag}\n${border}${ansiEscapes.cursorTo(2)}`
 
   const hasClearLineRef = new RegExp([
@@ -92,6 +93,10 @@ exports.runScript = (script, folder, streaming, quiet = false, colorCode = null)
     escapeAnsiEscapeSeq(ansiEscapes.cursorTo(1)),
   ].join('|'))
 
+  /**
+   * Print a data chunk to stdout
+   * @param {string} data
+   */
   const print = (data) => {
     if (quiet || !data.trim()) return
     const clearingLine = hasClearLineRef.test(data)
@@ -113,7 +118,7 @@ exports.runScript = (script, folder, streaming, quiet = false, colorCode = null)
     lastOutputFolder = folder
   }
 
-  // Process text to print border and move all output 2 charaters to the right
+  // Data chunk processing
 
   const regEraseLine = new RegExp(escapeAnsiEscapeSeq(ansiEscapes.eraseLine), 'g')
   const regMoveCursor = new RegExp(`(${[
@@ -129,6 +134,10 @@ exports.runScript = (script, folder, streaming, quiet = false, colorCode = null)
   const printEraseLine = `${ansiEscapes.eraseLine}${fakePrintBorder}`
   const printReplaceNewLine = `$&${fakePrintBorder}`
 
+  /**
+   * Process text to print border and move all output 2 charaters to the right
+   * @param {string} data
+   */
   const processOutput = (data) => {
     data = data.replace(regEraseLine, printEraseLine)
     data = data.replace(regMoveCursor, fakePrintBorder)
@@ -137,46 +146,59 @@ exports.runScript = (script, folder, streaming, quiet = false, colorCode = null)
     return data
   }
 
-  const queue = (data) => {
-    if (!data.trim()) return
-    buffer += data
-    const now = Date.now()
-    if (now - time >= streaming) {
-      flush()
-    } else if (!timeout) {
-      timeout = setTimeout(flush, streaming)
+  /**
+   * Send the pending streaming data to the screen or
+   * the streaming callback
+   * @type {(data: string) => void}
+   */
+  let outputData
+  if (typeof streaming === 'function') {
+    outputData = (data) => {
+      streaming(data, folder, script)
     }
+  } else {
+    outputData = print
   }
 
-  const flush = () => {
-    print(buffer)
-    buffer = ''
-    time = Date.now()
-    timeout = null
+  let buffer = []
+
+  /**
+   * Flush the queued data
+   */
+  const flushQueuedData = applyThrottle(() => {
+    outputData(buffer.join(''))
+    buffer.length = 0
+  }, throttle)
+
+  let eraseLineEscapeSeqsCount = 0
+
+  /**
+   * Queue a streaming print data
+   */
+  const queueData = (data) => {
+    if (!data.trim()) return
+    eraseLineEscapeSeqsCount = countEraseLineEscapeSeqs(data)
+    if (eraseLineEscapeSeqsCount) {
+      buffer = buffer.slice(0, buffer.length - eraseLineEscapeSeqsCount)
+    }
+    buffer.push(data)
+    flushQueuedData()
   }
+
+  // Child process events
 
   const promise = new Promise((resolve, reject) => {
     child.on('data', (data) => {
-      if (streaming) {
-        if (typeof streaming === 'function') {
-          streaming(data, folder, script)
-        } else if (typeof streaming === 'number') {
-          queue(data)
-        } else {
-          print(data)
-        }
+      if (streamingEnabled) {
+        queueData(data)
       } else {
-        buffer += data
+        buffer.push(data)
       }
     })
 
     child.on('exit', (code) => {
       if (buffer) {
-        if (typeof streaming === 'function') {
-          streaming(buffer, folder, script)
-        } else {
-          print(buffer)
-        }
+        flushQueuedData()
       }
       if (code !== 0) {
         reject(new Error(`${color(path.basename(folder))} Process exited with code ${code} for script ${chalk.bold(script)} in ${folder}.`))

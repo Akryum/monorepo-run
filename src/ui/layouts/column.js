@@ -22,15 +22,4 @@ exports.create = (screen, items) => {
     screen.append(log)
     item.log = log
   }
-
-  function refresh ({
-    items,
-    selectedItem,
-  }) {
-
-  }
-
-  return {
-    refresh,
-  }
 }

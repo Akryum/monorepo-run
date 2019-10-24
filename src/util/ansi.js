@@ -14,6 +14,7 @@ const ansiEscapeSeqsReg = new RegExp([
   ansiEscapes.eraseStartLine,
   ansiEscapes.eraseEndLine,
   `${ESC}0K`,
+  `${ESC}0J`,
   ...(genSeq(ansiEscapes.cursorTo, 0, 10)),
   ...(genSeq2(ansiEscapes.cursorTo, 0, 10, 0, 10)),
   ...(genSeq(ansiEscapes.cursorMove, -10, 10)),
@@ -24,11 +25,7 @@ const ansiEscapeSeqsReg = new RegExp([
   ...(genSeq(ansiEscapes.cursorBackward, -10, 10)),
 ].map(e => `(${exports.escapeAnsiEscapeSeq(e)})`).join('|'), 'g')
 
-exports.stripAnsiEscapeSeqs = (s) => {
-  s = s.replace(ansiEscapeSeqsReg, '')
-  s = s.replace(/\n/g, '')
-  return s
-}
+exports.stripAnsiEscapeSeqs = (s) => s.replace(ansiEscapeSeqsReg, '')
 
 const eraseLineEscapeSeqsReg = new RegExp([
   ansiEscapes.eraseLine,
@@ -38,8 +35,8 @@ const eraseLineEscapeSeqsReg = new RegExp([
   ...(genSeq(ansiEscapes.cursorTo, 0, 10)),
 ].map(e => `(${exports.escapeAnsiEscapeSeq(e)})`).join('|'), 'g')
 
-exports.hasEraseLineEscapeSeq = (s) => {
-  return eraseLineEscapeSeqsReg.test(s)
+exports.countEraseLineEscapeSeqs = (str) => {
+  return ((str || '').match(eraseLineEscapeSeqsReg) || []).length
 }
 
 function genSeq (fn, from, to) {
