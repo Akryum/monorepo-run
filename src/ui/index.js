@@ -5,7 +5,7 @@ const consola = require('consola')
 const { runScript, killAll } = require('../run')
 const { create: createToolbar } = require('./toobar')
 const { terminate } = require('../util/terminate')
-const { stripAnsiEscapeSeqs, countEraseLineEscapeSeqs } = require('../util/ansi')
+const { stripAnsiEscapeSeqs } = require('../util/ansi')
 const { throttle } = require('../util/throttle')
 
 /**
@@ -22,15 +22,7 @@ exports.startUI = (script, folders, streaming, layout) => {
     // Items
 
     function applyProcess (item) {
-      let eraseLineEscapeSeqsCount = 0
-
       const streamingCallback = (data) => {
-        eraseLineEscapeSeqsCount = countEraseLineEscapeSeqs(data)
-        if (eraseLineEscapeSeqsCount) {
-          for (let i = 0; i < eraseLineEscapeSeqsCount; i++) {
-            item.log.popLine()
-          }
-        }
         data = stripAnsiEscapeSeqs(data)
         item.log.add(data)
         update()
