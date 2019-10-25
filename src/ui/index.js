@@ -58,7 +58,7 @@ exports.startUI = ({
         update()
       }
 
-      Object.assign(item, runScript(script, item.folder, streamingCallback, 200, true))
+      Object.assign(item, runScript(script, item.folder, streamingCallback, 200, true, item.colorCode))
 
       item.promise.catch(e => {
         item.status = 'error'
