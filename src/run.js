@@ -6,6 +6,8 @@ const { terminate } = require('./util/terminate')
 const { hasYarn } = require('./util/env')
 const { escapeAnsiEscapeSeq, countEraseLineEscapeSeqs } = require('./util/ansi')
 const { throttle: applyThrottle } = require('./util/throttle')
+const { concurrent } = require('./util/concurrency')
+const { pickColor } = require('./util/colors')
 
 /** @typedef {import('node-pty').IPty} IPty */
 
@@ -18,28 +20,36 @@ const children = new Set()
 const folderMap = new Map()
 exports.folderMap = folderMap
 
-// Same colors as lerna 😺️
-const colors = ['cyan', 'magenta', 'blue', 'yellow', 'green', 'red']
-let colorIndex = 0
-
-function pickColor () {
-  return colors[colorIndex++ % colors.length]
-}
-
 let lastOutputClearedLine = false
 let lastOutputFolder = null
 
 /**
- * @param {string} script
- * @param {string[]} folders
- * @param {boolean|StreamingCallback} streaming
- * @param {throttle} throttle
+ * @typedef RunScriptsOptions
+ * @prop {string} script
+ * @prop {string[]} folders
+ * @prop {boolean|StreamingCallback} streaming
+ * @prop {throttle} throttle
+ * @prop {number} concurrency
+ */
+
+/**
+ * @param {RunScriptsOptions} options
  * @param {(folder: string, status: 'pending' | 'running' | 'error' | 'completed', result: any) => void} callback
  */
-exports.runScripts = async (script, folders, streaming = false, throttle = 0, callback = null) => {
+exports.runScripts = async ({
+  script,
+  folders,
+  streaming = false,
+  throttle = 0,
+  concurrency = folders.length,
+}, callback = null) => {
+  /** @type {Promise<void>[]} */
   const promises = []
+  /** @type {Map<string, { resolve: Function, reject: Function }>} */
+  const promiseMap = new Map()
 
-  for (const folder of folders) {
+  const { initRun } = concurrent(folders, concurrency, (folder, next) => {
+    const { resolve, reject } = promiseMap.get(folder)
     if (callback) {
       callback(folder, 'running')
     }
@@ -49,14 +59,26 @@ exports.runScripts = async (script, folders, streaming = false, throttle = 0, ca
       if (callback) {
         callback(folder, 'completed', r)
       }
-      return r
+      next()
+      resolve(r)
     })
     promise.catch(e => {
       if (callback) {
         callback(folder, 'error', e)
       }
-      return e
+      reject(e)
     })
+  })
+
+  for (const folder of folders) {
+    const promise = new Promise((resolve, reject) => {
+      promiseMap.set(folder, { resolve, reject })
+    })
+    promises.push(promise)
+    const isRunning = initRun()
+    if (!isRunning && callback) {
+      callback(folder, 'pending')
+    }
   }
 
   return Promise.all(promises)

@@ -1,18 +1,33 @@
 const path = require('path')
 const consola = require('consola')
+const chalk = require('chalk')
 const { resolvePatterns } = require('./patterns')
 const { resolveScriptFolders } = require('./resolve')
 const { runScripts } = require('./run')
 
 /**
- * @param {string} script
- * @param {string[]} patterns
- * @param {string} cwd
- * @param {boolean} streaming
- * @param {number} throttle
- * @param {string} ui
+ * @typedef MonorepoRunOptions
+ * @prop {string} script
+ * @prop {string[]} patterns
+ * @prop {string} cwd
+ * @prop {number | 'auto'} concurrency
+ * @prop {boolean} streaming
+ * @prop {number} throttle
+ * @prop {string} ui
  */
-exports.monorepoRun = async (script, patterns, cwd, streaming = false, throttle = 0, ui = null) => {
+
+/**
+ * @param {MonorepoRunOptions} options
+ */
+exports.monorepoRun = async ({
+  script,
+  patterns,
+  cwd,
+  concurrency = null,
+  streaming = false,
+  throttle = 0,
+  ui = null,
+}) => {
   if (!cwd) {
     cwd = process.cwd()
   }
@@ -28,9 +43,18 @@ exports.monorepoRun = async (script, patterns, cwd, streaming = false, throttle 
 
   const folders = resolveScriptFolders(script, patterns)
 
+  if (concurrency === null) {
+    concurrency = folders.length
+  } else if (concurrency === 'auto') {
+    const os = require('os')
+    concurrency = os.cpus().length
+    consola.log(`Concurrency automatically set to ${chalk.bold(concurrency)}`)
+  }
+  concurrency = Math.min(folders.length, concurrency)
+
   if (ui) {
     const { startUI } = require('./ui')
-    await startUI(script, folders, streaming, ui)
+    await startUI({ script, folders, layout: ui, concurrency })
   } else {
     // Simple progress UI
 
@@ -38,7 +62,7 @@ exports.monorepoRun = async (script, patterns, cwd, streaming = false, throttle 
     let tree
     /** @type {import('tasktree-cli/lib/task').Task} */
     let masterTask
-    /** @type {Map<string, import('tasktree-cli/lib/task').Task>} */
+    /** @type {Map<string, { label: string, task: import('tasktree-cli/lib/task').Task }>} */
     let tasks
 
     if (!streaming) {
@@ -52,14 +76,22 @@ exports.monorepoRun = async (script, patterns, cwd, streaming = false, throttle 
       // One task per folder
       tasks = new Map()
       for (const folder of folders) {
-        const task = masterTask.add(path.relative(process.cwd(), folder))
-        tasks.set(folder, task)
+        const label = path.relative(process.cwd(), folder)
+        const task = masterTask.add(label)
+        tasks.set(folder, { label, task })
       }
     }
 
-    await runScripts(script, folders, streaming, throttle, (folder, status, result) => {
-      if (status === 'running' && tree) {
-        tasks.get(folder).clear()
+    await runScripts({
+      script,
+      folders,
+      streaming,
+      throttle,
+      concurrency,
+    }, (folder, status, result) => {
+      const task = tree ? tasks.get(folder) : null
+      if (status === 'running' && task) {
+        task.task.update(task.label)
       } else if (status === 'error') {
         if (tree) {
           tree.stop()
@@ -67,10 +99,10 @@ exports.monorepoRun = async (script, patterns, cwd, streaming = false, throttle 
         consola.error(result)
         exports.killAll()
         process.exit(1)
-      } else if (status === 'completed' && tree) {
-        tasks.get(folder).complete()
-      } else if (status === 'pending' && tree) {
-        tasks.get(folder).log('Pending...')
+      } else if (status === 'completed' && task) {
+        task.task.complete()
+      } else if (status === 'pending' && task) {
+        task.task.update(`${task.label} (💤️ Pending)`)
       }
     })
 

@@ -7,21 +7,51 @@ const { create: createToolbar } = require('./toobar')
 const { terminate } = require('../util/terminate')
 const { stripAnsiEscapeSeqs } = require('../util/ansi')
 const { throttle } = require('../util/throttle')
+const { concurrent } = require('../util/concurrency')
+const { pickColor } = require('../util/colors')
 
 /**
- * @param {string} script
- * @param {string[]} folders
- * @param {boolean|number} streaming
- * @param {string} layout
+ * @typedef {StartUIOptions}
+ * @prop {string} script
+ * @prop {string[]} folders
+ * @prop {string} layout
+ * @prop {number} concurrency
  */
-exports.startUI = (script, folders, streaming, layout) => {
+
+/**
+ * @param {StartUIOptions} options
+ */
+exports.startUI = ({
+  script,
+  folders,
+  layout,
+  concurrency,
+}) => {
   return new Promise((resolve) => {
     // @TODO refactor help
     consola.info('Keyboard shortcuts: Arrows to select task | [SPACE] to kill task or start again')
 
-    // Items
+    const itemMap = new Map()
+    const items = folders.map(folder => {
+      const colorCode = pickColor()
+      const color = chalk[colorCode]
+      const item = {
+        folder,
+        status: 'running',
+        child: null,
+        promise: null,
+        colorCode,
+        color,
+        __label: null,
+        __status: null,
+        __selected: null,
+      }
+      item.label = item.color(path.basename(item.folder))
+      itemMap.set(folder, item)
+      return item
+    })
 
-    function applyProcess (item) {
+    function applyProcess (item, next = null) {
       const streamingCallback = (data) => {
         data = stripAnsiEscapeSeqs(data)
         item.log.add(data)
@@ -39,28 +69,19 @@ exports.startUI = (script, folders, streaming, layout) => {
         if (item.status === 'killed') return
         if (code === 0) {
           item.status = 'completed'
+          if (next) next()
         } else {
           item.status = 'error'
         }
         update()
       })
+
+      item.child.resize(item.log.width - 2, item.log.height)
     }
 
-    const items = folders.map(folder => {
-      const item = {
-        folder,
-        status: 'running',
-        child: null,
-        promise: null,
-        colorCode: null,
-        color: null,
-        __label: null,
-        __status: null,
-        __selected: null,
-      }
-      applyProcess(item)
-      item.label = item.color(path.basename(item.folder))
-      return item
+    const { initRun } = concurrent(folders, concurrency, (folder, next) => {
+      const item = itemMap.get(folder)
+      applyProcess(item, next)
     })
 
     function stopItem (item) {
@@ -132,8 +153,8 @@ exports.startUI = (script, folders, streaming, layout) => {
     create(screen, items)
     createToolbar(screen, items)
 
-    for (const item of items) {
-      item.child.resize(item.log.width - 2, item.log.height)
+    for (let i = 0; i < folders.length; i++) {
+      initRun()
     }
 
     const update = throttle(() => {

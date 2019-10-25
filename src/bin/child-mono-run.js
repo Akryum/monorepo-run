@@ -10,6 +10,8 @@ const cli = cac()
 
 cli.option('--patterns <patterns>', 'Folder glob patterns (by default will take yarn workspaces)')
 
+cli.option('--concurrency <number|auto>', 'Limit the number of active parallel tasks. `auto` = number of cpu cores. By default there is no limit.')
+
 cli.option('--stream [throttle]', 'Stream output directly instead of waiting for the end. You can also throttle (ms) the output when streaming is enabled.', {
   default: false,
 })
@@ -40,7 +42,11 @@ cli.command('<script>', 'Run a script in the monorepo packages')
     }
     try {
       const time = Date.now()
-      const { folders } = await monorepoRun(script, options.patterns, null, options.stream, throttle, options.ui)
+      const { folders } = await monorepoRun({
+        ...options,
+        script,
+        throttle,
+      })
 
       // Summary
       console.log('\n')
