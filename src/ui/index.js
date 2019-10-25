@@ -172,10 +172,10 @@ exports.startUI = ({
           item.log.setLabel(
             item.color(selected ? ' ◉ ' : ' ○ ') +
             item.label + ' ' +
-            (item.status === 'running' ? '⏳'
-              : item.status === 'completed' ? chalk.green('✓')
-                : item.status === 'error' ? chalk.red('⚠')
-                  : item.status === 'killed' ? chalk.gray('⊗')
+            (item.status === 'running' ? '⋯'
+              : item.status === 'completed' ? chalk.green.bold('✓ Done')
+                : item.status === 'error' ? chalk.red('⚠ Error')
+                  : item.status === 'killed' ? chalk.gray('⊗ Killed')
                     : '') + ' '
           )
         }
