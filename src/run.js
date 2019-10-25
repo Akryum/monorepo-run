@@ -1,7 +1,6 @@
 const path = require('path')
 const pty = require('node-pty')
 const chalk = require('chalk')
-const consola = require('consola')
 const ansiEscapes = require('ansi-escapes')
 const { terminate } = require('./util/terminate')
 const { hasYarn } = require('./util/env')
@@ -35,17 +34,28 @@ let lastOutputFolder = null
  * @param {string[]} folders
  * @param {boolean|StreamingCallback} streaming
  * @param {throttle} throttle
+ * @param {(folder: string, status: 'pending' | 'running' | 'error' | 'completed', result: any) => void} callback
  */
-exports.runScripts = async (script, folders, streaming = false, throttle = 0) => {
+exports.runScripts = async (script, folders, streaming = false, throttle = 0, callback = null) => {
   const promises = []
 
   for (const folder of folders) {
+    if (callback) {
+      callback(folder, 'running')
+    }
     const { promise } = exports.runScript(script, folder, streaming, throttle)
     promises.push(promise)
+    promise.then(r => {
+      if (callback) {
+        callback(folder, 'completed', r)
+      }
+      return r
+    })
     promise.catch(e => {
-      consola.error(e)
-      exports.killAll()
-      process.exit(1)
+      if (callback) {
+        callback(folder, 'error', e)
+      }
+      return e
     })
   }
 
