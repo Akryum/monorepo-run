@@ -12,7 +12,7 @@ cli.option('--patterns <patterns>', 'Folder glob patterns (by default will take 
 
 cli.option('--concurrency <number|auto>', 'Limit the number of active parallel tasks. `auto` = number of cpu cores. By default there is no limit.')
 
-cli.option('--stream [throttle]', 'Stream output directly instead of waiting for the end. You can also throttle (ms) the output when streaming is enabled.', {
+cli.option('--stream [throttle]', 'Stream output directly instead of waiting for the end. You can also throttle (ms) the output when streaming is enabled (default 200ms).', {
   default: false,
 })
 
@@ -29,6 +29,8 @@ cli.command('<script>', 'Run a script in the monorepo packages')
     if (options.stream && !isNaN(parseInt(options.stream))) {
       throttle = parseInt(options.stream)
       options.stream = true
+    } else if (options.stream === true) {
+      throttle = 200
     }
     if (options.patterns) {
       if (options.patterns.startsWith('[')) {
@@ -44,6 +46,7 @@ cli.command('<script>', 'Run a script in the monorepo packages')
       const time = Date.now()
       const { folders } = await monorepoRun({
         ...options,
+        streaming: options.stream,
         script,
         throttle,
       })
