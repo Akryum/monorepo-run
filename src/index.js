@@ -58,28 +58,26 @@ exports.monorepoRun = async ({
   } else {
     // Simple progress UI
 
-    /** @type {import('tasktree-cli').TaskTree} */
-    let tree
-    /** @type {import('tasktree-cli/lib/task').Task} */
-    let masterTask
-    /** @type {Map<string, { label: string, task: import('tasktree-cli/lib/task').Task }>} */
-    let tasks
+    let spinner, spinnerLabels
 
     if (!streaming) {
-      const { TaskTree } = require('tasktree-cli')
-      tree = TaskTree.tree()
-      tree.start({
-        autoClear: true,
-      })
-      masterTask = tree.add(script)
+      const Multispinner = require('multispinner')
 
       // One task per folder
-      tasks = new Map()
+      spinnerLabels = {}
       for (const folder of folders) {
         const label = path.relative(process.cwd(), folder)
-        const task = masterTask.add(label)
-        tasks.set(folder, { label, task })
+        spinnerLabels[folder] = label
       }
+
+      spinner = new Multispinner(spinnerLabels, {
+        clear: true,
+        frames: ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'],
+      })
+      spinner.stop = function () {
+        if (this.clear) this.update.clear()
+        this.update.done()
+      }.bind(spinner)
     }
 
     await runScripts({
@@ -89,27 +87,24 @@ exports.monorepoRun = async ({
       throttle,
       concurrency,
     }, (folder, status, result) => {
-      const task = tree ? tasks.get(folder) : null
-      if (status === 'running' && task) {
-        task.task.update(task.label)
+      if (status === 'running' && spinner) {
+        spinner.spinners[folder].text = spinnerLabels[folder]
       } else if (status === 'error') {
-        if (tree) {
-          tree.stop()
+        if (spinner) {
+          spinner.stop()
         }
         consola.error(result)
         exports.killAll()
         process.exit(1)
-      } else if (status === 'completed' && task) {
-        task.task.complete()
-      } else if (status === 'pending' && task) {
-        task.task.update(`${task.label} (💤️ Pending)`)
+      } else if (status === 'completed' && spinner) {
+        spinner.success(folder)
+      } else if (status === 'pending' && spinner) {
+        spinner.spinners[folder].text = `${spinnerLabels[folder]} (💤️ Pending)`
       }
     })
 
-    // Stop progress UI
-    if (tree) {
-      masterTask.complete()
-      tree.stop()
+    if (spinner) {
+      spinner.stop()
     }
   }
 
