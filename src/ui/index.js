@@ -120,7 +120,6 @@ exports.startUI = ({
     screen.key('C-c', () => {
       killAll()
       terminate(process.pid, process.cwd())
-      resolve()
     })
 
     screen.key(['left', 'up'], () => {
