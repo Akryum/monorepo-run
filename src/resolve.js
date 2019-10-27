@@ -38,7 +38,7 @@ exports.resolveScriptFolders = (script, patterns, cwd) => {
   patterns.sort()
 
   for (const pattern of patterns) {
-    const pkgFiles = globby.sync(path.join(pattern, 'package.json'), globbyOptions)
+    const pkgFiles = globby.sync(path.join(pattern, 'package.json').replace(/\\/g, '/'), globbyOptions)
 
     for (const pkgFile of pkgFiles) {
       if (fs.existsSync(pkgFile)) {
