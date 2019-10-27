@@ -8,6 +8,8 @@ const { escapeAnsiEscapeSeq, countEraseLineEscapeSeqs } = require('./util/ansi')
 const { throttle: applyThrottle } = require('./util/throttle')
 const { concurrent } = require('./util/concurrency')
 const { pickColor } = require('./util/colors')
+const { findExecutable } = require('./util/find-executable')
+const { isWindows } = require('./util/platform')
 
 /** @typedef {import('node-pty').IPty} IPty */
 
@@ -102,7 +104,13 @@ exports.runScript = (script, folder, streaming = false, throttle = 0, quiet = fa
   const tag = color(`⎡⚑ ${path.basename(folder)}`)
   const border = color('⎢')
 
-  const child = pty.spawn(hasYarn() ? 'yarn' : 'npm', [
+  let executable = hasYarn() ? 'yarn' : 'npm'
+
+  if (isWindows) {
+    executable = findExecutable(executable, folder)
+  }
+
+  const child = pty.spawn(executable, [
     'run',
     script,
   ], {
