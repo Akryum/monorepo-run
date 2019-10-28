@@ -45,7 +45,8 @@ exports.findExecutable = (command, cwd, options) => {
       fullPath = path.join(cwd, pathEntry, command)
     }
     if (fs.existsSync(fullPath)) {
-      return fullPath
+      const fullPathWithCmd = `${fullPath}.cmd`
+      return fs.existsSync(fullPathWithCmd) ? fullPathWithCmd : fullPath
     }
     let withExtension = fullPath + '.com'
     if (fs.existsSync(withExtension)) {
