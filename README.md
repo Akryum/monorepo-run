@@ -43,7 +43,7 @@ mono-run lint --ui row
 
 ### Streaming
 
-By default, `mono-run` will wait for scripts to complete before displaying the outputs. If you want to get the ouput as soon as it's written instead, specify the `--stream` flag:
+By default, `mono-run` will wait for scripts to complete before displaying the outputs. If you want to get the output as soon as it's written instead, specify the `--stream` flag:
 
 ```bash
 mono-run dev --stream
