@@ -10,8 +10,8 @@ exports.resolvePatterns = (cwd) => {
     try {
       const pkg = JSON.parse(fs.readFileSync(pkgFile, { encoding: 'utf8' }))
       if (pkg.workspaces) {
-        return pkg.workspaces
-      }
+        return pkg.workspaces.packages || pkg.workspaces
+      } else if ()
     } catch (e) {
       // Error
     }
