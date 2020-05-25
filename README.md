@@ -69,3 +69,7 @@ In your `package.json`:
   }
 }
 ```
+
+## Sponsors
+
+[![sponsors logos](https://guillaume-chau.info/sponsors.png)](https://guillaume-chau.info/sponsors)
